@@ -393,7 +393,6 @@ h2.h-title{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.08em;t
     <div class="form-row"><label>Mot de passe
       <input type="password" id="loginPass" placeholder="••••••••">
     </label></div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Mot de passe par défaut : <span class="mono">mouvaux</span></p>
     <button class="btn" onclick="doLogin()">Se connecter</button>
   </div>
 </div>
@@ -482,6 +481,7 @@ const START_ELO = 1000;
 
 /* ---------- Persistence ---------- */
 async function loadData(){
+  try{ if(localStorage.getItem('ecm-admin-session')==='true') isAdmin = true; }catch(e){}
   if(supabaseClient){
     try{
       const { data, error } = await supabaseClient.from('club_data').select('payload').eq('id',1).single();
@@ -1153,6 +1153,7 @@ function doLogin(){
   const val = document.getElementById('loginPass').value;
   if(val === DATA.adminPassword){
     isAdmin = true;
+    try{ localStorage.setItem('ecm-admin-session', 'true'); }catch(e){}
     closeModal('loginModal');
     document.getElementById('loginPass').value='';
     renderAdminZone();
@@ -1161,7 +1162,12 @@ function doLogin(){
     alert('Mot de passe incorrect.');
   }
 }
-function doLogout(){ isAdmin=false; renderAdminZone(); renderAdminForms(); }
+function doLogout(){
+  isAdmin=false;
+  try{ localStorage.removeItem('ecm-admin-session'); }catch(e){}
+  renderAdminZone();
+  renderAdminForms();
+}
 
 /* ---------- Tabs ---------- */
 document.getElementById('tabs').addEventListener('click', (e)=>{
