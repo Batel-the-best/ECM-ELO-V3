@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECM ELO — Escrime Club de Mouvaux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#10131a;
+  --surface:#181d26;
+  --surface2:#212832;
+  --line:#2b333f;
+  --text:#eef0f2;
+  --muted:#8b93a1;
+  --sabre:#c99a3f;
+  --sabre-dim:#4a3d22;
+  --fleuret:#4fb3ab;
+  --fleuret-dim:#1f3a37;
+  --win:#5cb86b;
+  --loss:#c65b52;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--sabre);color:#10131a;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.display{font-family:'Oswald',sans-serif;text-transform:uppercase;}
+
+/* ===== HEADER ===== */
+header.top{
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#141922,#10131a);
+  position:sticky;top:0;z-index:50;
+}
+.top-inner{
+  max-width:1180px;margin:0 auto;padding:18px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand-mark{
+  width:44px;height:44px;flex:none;position:relative;
+}
+.brand-mark svg{width:100%;height:100%;}
+.brand-text .eyebrow{
+  font-size:10.5px;letter-spacing:.16em;color:var(--muted);
+  font-family:'Oswald',sans-serif;text-transform:uppercase;
+}
+.brand-text h1{
+  font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;
+  letter-spacing:.03em;line-height:1;margin-top:3px;
+  background:linear-gradient(90deg,var(--sabre),var(--fleuret));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.admin-zone{display:flex;align-items:center;gap:10px;}
+.pill-btn{
+  font-family:'Oswald',sans-serif;font-size:12.5px;letter-spacing:.06em;
+  text-transform:uppercase;background:var(--surface2);border:1px solid var(--line);
+  color:var(--text);padding:9px 16px;border-radius:999px;cursor:pointer;
+  transition:.15s;
+}
+.pill-btn:hover{border-color:var(--sabre);}
+.pill-btn.active{background:var(--sabre);color:#1a1305;border-color:var(--sabre);}
+.badge-admin{
+  font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.08em;
+  color:var(--win);border:1px solid var(--win);padding:5px 10px;border-radius:999px;
+}
+
+/* ===== NAV ===== */
+nav.tabs{
+  max-width:1180px;margin:0 auto;padding:0 24px;
+  display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;
+}
+.tab-btn{
+  font-family:'Oswald',sans-serif;font-size:13.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);background:none;border:none;
+  padding:14px 18px;cursor:pointer;position:relative;white-space:nowrap;
+}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--text);}
+.tab-btn.active::after{
+  content:'';position:absolute;left:14px;right:14px;bottom:-1px;height:3px;
+  background:linear-gradient(90deg,var(--sabre),var(--fleuret));
+  border-radius:2px 2px 0 0;
+}
+
+main{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+.view{display:none;animation:fade .25s ease;}
+.view.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ===== WEAPON SWITCH ===== */
+.weapon-switch{display:flex;gap:10px;margin-bottom:20px;}
+.weapon-card{
+  flex:1;border:1px solid var(--line);background:var(--surface);border-radius:14px;
+  padding:16px 20px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;
+}
+.weapon-card .w-label{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.weapon-card .w-count{font-family:'Oswald',sans-serif;font-size:28px;font-weight:600;margin-top:2px;}
+.weapon-card.sabre.active{border-color:var(--sabre);background:linear-gradient(135deg,var(--sabre-dim),var(--surface));}
+.weapon-card.fleuret.active{border-color:var(--fleuret);background:linear-gradient(135deg,var(--fleuret-dim),var(--surface));}
+.weapon-card.sabre.active .w-count{color:var(--sabre);}
+.weapon-card.fleuret.active .w-count{color:var(--fleuret);}
+
+/* ===== FILTER BAR ===== */
+.filter-bar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+}
+.filter-group{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.filter-label{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-right:4px;}
+select, input[type=text], input[type=number], input[type=date], input[type=password]{
+  background:var(--surface2);border:1px solid var(--line);color:var(--text);
+  border-radius:8px;padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;
+}
+select:focus,input:focus{outline:2px solid var(--sabre);outline-offset:1px;}
+.chip{
+  font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface2);cursor:pointer;color:var(--muted);
+}
+.chip.active{color:var(--text);border-color:var(--sabre);background:var(--sabre-dim);}
+
+/* ===== TABLE ===== */
+table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:14px;overflow:hidden;border:1px solid var(--line);}
+thead th{
+  text-align:left;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);
+}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+.rank-cell{font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;width:40px;}
+.rank-1{color:var(--sabre);}
+.elo-cell{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
+.delta{font-family:'JetBrains Mono',monospace;font-size:12px;padding:2px 6px;border-radius:5px;}
+.delta.up{color:var(--win);background:rgba(92,184,107,.1);}
+.delta.down{color:var(--loss);background:rgba(198,91,82,.1);}
+.delta.flat{color:var(--muted);}
+.tag{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);}
+
+/* ===== CARDS / GRID ===== */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;transition:.15s;}
+.card:hover{border-color:var(--sabre);transform:translateY(-2px);}
+.card .name{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;}
+.card .meta{color:var(--muted);font-size:12px;margin-top:4px;}
+.card .elo-big{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;margin-top:10px;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:26px;}
+.stat-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
+.stat-box .n{font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;}
+.stat-box .l{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+
+.koth{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px;}
+.koth-card{
+  border-radius:16px;padding:22px;border:1px solid var(--line);
+  background:radial-gradient(circle at top right,var(--surface2),var(--surface));
+  position:relative;overflow:hidden;
+}
+.koth-card .crown{position:absolute;top:14px;right:16px;font-size:26px;opacity:.8;}
+.koth-card h3{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;}
+.koth-card .kname{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;margin-top:8px;}
+.koth-card .kelo{font-family:'JetBrains Mono',monospace;color:var(--sabre);font-size:15px;margin-top:2px;}
+.koth-card .ksince{font-size:12px;color:var(--muted);margin-top:8px;}
+
+section.block{margin-bottom:30px;}
+h2.h-title{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+
+/* ===== FORMS ===== */
+.form-panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:20px;}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.form-row label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-family:'Oswald',sans-serif;flex:1;min-width:120px;}
+.btn{
+  font-family:'Oswald',sans-serif;letter-spacing:.06em;text-transform:uppercase;font-size:13px;
+  background:linear-gradient(90deg,var(--sabre),#b8862f);color:#1a1305;border:none;
+  padding:10px 20px;border-radius:9px;cursor:pointer;font-weight:600;
+}
+.btn:hover{filter:brightness(1.08);}
+.btn.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--line);}
+
+.modal-bg{position:fixed;inset:0;background:rgba(8,10,14,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal-bg.active{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:420px;width:100%;}
+.modal h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+.modal .form-row label{width:100%;}
+.close-x{float:right;cursor:pointer;color:var(--muted);}
+
+.h2h-panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:16px;}
+.h2h-header{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:14px;}
+.h2h-name{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;}
+.h2h-vs{color:var(--muted);font-family:'Oswald',sans-serif;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-track{flex:1;height:10px;background:var(--surface2);border-radius:6px;overflow:hidden;display:flex;}
+.bar-fill-a{background:var(--sabre);height:100%;}
+.bar-fill-b{background:var(--fleuret);height:100%;}
+
+.empty{color:var(--muted);text-align:center;padding:40px;font-size:14px;}
+.profile-modal .elo-line{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin:10px 0;}
+</style>
+</head>
+<body>
+
+<div id="configBanner" style="display:none;background:#3a2a1a;border-bottom:1px solid #c99a3f;color:#f0d9a8;padding:12px 24px;font-size:13px;text-align:center;">
+  ⚠️ Supabase n'est pas configuré — modifie <span class="mono">SUPABASE_URL</span> et <span class="mono">SUPABASE_ANON_KEY</span> en haut du fichier <span class="mono">index.html</span>. Le site fonctionne pour l'instant en mode local (non partagé).
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 44 44" fill="none">
+          <circle cx="22" cy="22" r="21" stroke="#2b333f" stroke-width="1.5"/>
+          <path d="M10 32 L30 12" stroke="#c99a3f" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M14 34 L34 14" stroke="#4fb3ab" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="30" cy="12" r="2.2" fill="#c99a3f"/>
+          <circle cx="34" cy="14" r="2.2" fill="#4fb3ab"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="eyebrow">Escrime Club de Mouvaux</div>
+        <h1>ECM ELO</h1>
+      </div>
+    </div>
+    <div class="admin-zone" id="adminZone"></div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-view="classement">Classement</button>
+    <button class="tab-btn" data-view="matchs">Matchs</button>
+    <button class="tab-btn" data-view="tireurs">Tireurs</button>
+    <button class="tab-btn" data-view="stats">Stats</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= CLASSEMENT ================= -->
+  <div class="view active" id="view-classement">
+    <div class="weapon-switch">
+      <div class="weapon-card sabre active" data-weapon="sabre" onclick="setWeapon('sabre')">
+        <div class="w-label">Classement Sabre</div>
+        <div class="w-count" id="countSabre">0 tireurs</div>
+      </div>
+      <div class="weapon-card fleuret" data-weapon="fleuret" onclick="setWeapon('fleuret')">
+        <div class="w-label">Classement Fleuret</div>
+        <div class="w-count" id="countFleuret">0 tireurs</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Période</span>
+        <select id="periodSelect" onchange="renderClassement()">
+          <option value="all">Tout</option>
+          <option value="season">Saison en cours</option>
+          <option value="1y">1 an</option>
+          <option value="1m">1 mois</option>
+          <option value="1w">1 semaine</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Sexe</span>
+        <select id="sexSelect" onchange="renderClassement()">
+          <option value="all">Tous</option>
+          <option value="F">Femmes</option>
+          <option value="M">Hommes</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Catégorie</span>
+        <select id="catSelect" onchange="renderClassement()">
+          <option value="all">Toutes</option>
+          <option value="M11">M11</option>
+          <option value="M13">M13</option>
+          <option value="M15">M15</option>
+          <option value="M17">M17</option>
+          <option value="M20">M20</option>
+          <option value="Senior">Senior</option>
+          <option value="Veteran">Vétéran</option>
+        </select>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>Tireur</th><th>Cat.</th><th>Sexe</th><th>Elo</th><th>Évolution</th></tr>
+      </thead>
+      <tbody id="classementBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ================= MATCHS ================= -->
+  <div class="view" id="view-matchs">
+    <div id="adminMatchForm"></div>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Arme</span>
+        <select id="matchWeaponFilter" onchange="renderMatchs()">
+          <option value="all">Toutes</option>
+          <option value="sabre">Sabre</option>
+          <option value="fleuret">Fleuret</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Tireur</span>
+        <select id="matchFencerFilter" onchange="renderMatchs()">
+          <option value="all">Tous les tireurs</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Sexe adversaire</span>
+        <select id="matchOppSexFilter" onchange="renderMatchs()">
+          <option value="all">Tous</option>
+          <option value="F">Femme</option>
+          <option value="M">Homme</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Catégorie adversaire</span>
+        <select id="matchOppCatFilter" onchange="renderMatchs()">
+          <option value="all">Toutes</option>
+          <option value="M11">M11</option>
+          <option value="M13">M13</option>
+          <option value="M15">M15</option>
+          <option value="M17">M17</option>
+          <option value="M20">M20</option>
+          <option value="Senior">Senior</option>
+          <option value="Veteran">Vétéran</option>
+        </select>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Arme</th><th>Tireur A</th><th>Score</th><th>Tireur B</th><th>Δ Elo</th></tr></thead>
+      <tbody id="matchsBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ================= TIREURS ================= -->
+  <div class="view" id="view-tireurs">
+    <div id="adminFencerForm"></div>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Arme</span>
+        <select id="fencerWeaponFilter" onchange="renderTireurs()">
+          <option value="all">Toutes</option>
+          <option value="sabre">Sabre</option>
+          <option value="fleuret">Fleuret</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid" id="tireursGrid"></div>
+  </div>
+
+  <!-- ================= STATS ================= -->
+  <div class="view" id="view-stats">
+    <section class="block">
+      <h2 class="h-title">Vue d'ensemble du club</h2>
+      <div class="stat-grid" id="generalStats"></div>
+    </section>
+    <section class="block">
+      <h2 class="h-title">King of the hill</h2>
+      <div class="koth" id="kothGrid"></div>
+    </section>
+    <section class="block">
+      <h2 class="h-title">Évolution de l'Elo</h2>
+      <div class="filter-bar" style="align-items:flex-start;">
+        <div class="filter-group">
+          <span class="filter-label">Arme</span>
+          <select id="chartWeaponFilter" onchange="renderFencerPicker()">
+            <option value="sabre">Sabre</option>
+            <option value="fleuret">Fleuret</option>
+          </select>
+        </div>
+        <div class="filter-group" id="chartFencerPicker" style="flex-wrap:wrap;"></div>
+      </div>
+      <div id="eloChartWrap" style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto;"></div>
+    </section>
+  </div>
+
+</main>
+
+<!-- Modal: login admin -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <span class="close-x" onclick="closeModal('loginModal')">✕</span>
+    <h3>Connexion admin</h3>
+    <div class="form-row"><label>Mot de passe
+      <input type="password" id="loginPass" placeholder="••••••••">
+    </label></div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Mot de passe par défaut : <span class="mono">mouvaux</span></p>
+    <button class="btn" onclick="doLogin()">Se connecter</button>
+  </div>
+</div>
+
+<!-- Modal: édition tireur -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <span class="close-x" onclick="closeModal('editModal')">✕</span>
+    <h3>Modifier le profil</h3>
+    <input type="hidden" id="editFencerId">
+    <div class="form-row"><label>Nom complet
+      <input type="text" id="editFencerName">
+    </label></div>
+    <div class="form-row">
+      <label>Sexe
+        <select id="editFencerSex"><option value="F">Femme</option><option value="M">Homme</option></select>
+      </label>
+      <label>Année de naissance
+        <input type="number" id="editFencerYear" min="1930" max="${new Date().getFullYear()}">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Arme
+        <select id="editFencerWeapon"><option value="sabre">Sabre</option><option value="fleuret">Fleuret</option></select>
+      </label>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Changer l'arme ne modifie pas l'historique des matchs déjà enregistrés.</p>
+    <button class="btn" onclick="saveEditFencer()">Enregistrer</button>
+  </div>
+</div>
+
+<!-- Modal: profil tireur -->
+<div class="modal-bg" id="profileModal">
+  <div class="modal profile-modal" style="max-width:560px;">
+    <span class="close-x" onclick="closeModal('profileModal')">✕</span>
+    <div id="profileContent"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ECM ELO — logique applicative
+   ============================================================ */
+
+/* ==== CONFIGURATION SUPABASE — à remplir avant publication ====
+   1. Crée un projet gratuit sur https://supabase.com
+   2. Dans "SQL Editor", exécute :
+
+      create table club_data (
+        id int primary key,
+        payload jsonb not null default '{}'::jsonb,
+        updated_at timestamptz default now()
+      );
+      insert into club_data (id, payload) values (1, '{}'::jsonb);
+      alter table club_data enable row level security;
+      create policy "public read" on club_data for select using (true);
+      create policy "public update" on club_data for update using (true);
+      create policy "public insert" on club_data for insert with check (true);
+      alter publication supabase_realtime add table club_data;
+
+   3. Dans "Project Settings > API", copie l'URL du projet et la clé "anon public"
+      ci-dessous.
+   ============================================================ */
+const SUPABASE_URL = 'https://bfacweqexqqcoihgxjew.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TKLmw1DyodaCGNq8hFlirw_AZciPfT4';
+
+let supabaseClient = null;
+const supabaseConfigured = !SUPABASE_URL.includes('VOTRE-PROJET') && !SUPABASE_ANON_KEY.includes('VOTRE_CLE');
+if(supabaseConfigured && window.supabase){
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}else{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    document.getElementById('configBanner').style.display = 'block';
+  });
+}
+
+const STORAGE_KEY = 'ecm-elo-data'; // utilisé en mode local (fallback) uniquement
+let DATA = { fencers: [], matches: [], adminPassword: 'mouvaux' };
+let isAdmin = false;
+let currentWeapon = 'sabre';
+let selectedFencerId = null;
+let h2hOpponentId = null;
+
+const K = 32;
+const START_ELO = 1000;
+
+/* ---------- Persistence ---------- */
+async function loadData(){
+  if(supabaseClient){
+    try{
+      const { data, error } = await supabaseClient.from('club_data').select('payload').eq('id',1).single();
+      if(error) throw error;
+      if(data && data.payload && Object.keys(data.payload).length){
+        DATA = data.payload;
+      }else{
+        seedDemo();
+        await saveData();
+      }
+      subscribeRealtime();
+    }catch(e){
+      console.error('Erreur Supabase, bascule en mode local :', e);
+      loadLocalFallback();
+    }
+  }else{
+    loadLocalFallback();
+  }
+  renderAll();
+}
+
+function loadLocalFallback(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ DATA = JSON.parse(raw); return; }
+  }catch(e){}
+  seedDemo();
+  saveData();
+}
+
+async function saveData(){
+  if(supabaseClient){
+    try{
+      const { error } = await supabaseClient.from('club_data').upsert({ id:1, payload: DATA, updated_at: new Date().toISOString() });
+      if(error) throw error;
+      return;
+    }catch(e){
+      console.error('Erreur de sauvegarde Supabase :', e);
+    }
+  }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+}
+
+function subscribeRealtime(){
+  supabaseClient
+    .channel('club_data_changes')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'club_data', filter: 'id=eq.1' }, (payload)=>{
+      if(payload.new && payload.new.payload){
+        DATA = payload.new.payload;
+        renderAll();
+      }
+    })
+    .subscribe();
+}
+
+function seedDemo(){
+  const today = new Date();
+  const mkDate = (daysAgo)=>{ const d=new Date(today); d.setDate(d.getDate()-daysAgo); return d.toISOString().slice(0,10); };
+  DATA.fencers = [
+    {id:'f1',name:'Léa Fontaine',sex:'F',birthYear: today.getFullYear()-16,weapon:'fleuret',elo:START_ELO,history:[]},
+    {id:'f2',name:'Hugo Lambert',sex:'M',birthYear: today.getFullYear()-15,weapon:'fleuret',elo:START_ELO,history:[]},
+    {id:'f3',name:'Camille Roy',sex:'F',birthYear: today.getFullYear()-22,weapon:'sabre',elo:START_ELO,history:[]},
+    {id:'f4',name:'Nathan Petit',sex:'M',birthYear: today.getFullYear()-24,weapon:'sabre',elo:START_ELO,history:[]},
+    {id:'f5',name:'Inès Dubois',sex:'F',birthYear: today.getFullYear()-13,weapon:'fleuret',elo:START_ELO,history:[]},
+    {id:'f6',name:'Maxime Girard',sex:'M',birthYear: today.getFullYear()-42,weapon:'sabre',elo:START_ELO,history:[]},
+  ];
+  DATA.matches = [
+    {id:'m1',date:mkDate(40),weapon:'sabre',a:'f3',b:'f4',scoreA:15,scoreB:9},
+    {id:'m2',date:mkDate(30),weapon:'sabre',a:'f4',b:'f6',scoreA:15,scoreB:12},
+    {id:'m3',date:mkDate(20),weapon:'fleuret',a:'f1',b:'f2',scoreA:15,scoreB:13},
+    {id:'m4',date:mkDate(10),weapon:'fleuret',a:'f2',b:'f5',scoreA:15,scoreB:7},
+    {id:'m5',date:mkDate(3),weapon:'sabre',a:'f3',b:'f6',scoreA:15,scoreB:11},
+  ];
+  recomputeAllElo();
+}
+
+/* ---------- Elo engine ---------- */
+function expectedScore(ra, rb){ return 1/(1+Math.pow(10,(rb-ra)/400)); }
+
+function recomputeAllElo(){
+  // reset
+  DATA.fencers.forEach(f=>{ f.elo = START_ELO; f.history = [{date:'0000-00-00', elo:START_ELO}]; });
+  const sorted = [...DATA.matches].sort((m1,m2)=> new Date(m1.date)-new Date(m2.date));
+  sorted.forEach(m=>{
+    const fa = DATA.fencers.find(f=>f.id===m.a);
+    const fb = DATA.fencers.find(f=>f.id===m.b);
+    if(!fa||!fb) return;
+    const ra=fa.elo, rb=fb.elo;
+    const sa = m.scoreA > m.scoreB ? 1 : 0;
+    const sb = 1-sa;
+    const ea = expectedScore(ra,rb), eb=1-ea;
+    fa.elo = Math.round(ra + K*(sa-ea));
+    fb.elo = Math.round(rb + K*(sb-eb));
+    fa.history.push({date:m.date, elo:fa.elo});
+    fb.history.push({date:m.date, elo:fb.elo});
+  });
+}
+
+// recompute elo using only matches after a cutoff date (for period filtering)
+function eloForPeriod(weapon, cutoffDate){
+  const map = {};
+  DATA.fencers.filter(f=>f.weapon===weapon).forEach(f=> map[f.id] = {elo:START_ELO, prevElo:START_ELO, last:null});
+  const sorted = [...DATA.matches]
+    .filter(m=>m.weapon===weapon && (!cutoffDate || new Date(m.date) >= cutoffDate))
+    .sort((m1,m2)=> new Date(m1.date)-new Date(m2.date));
+  sorted.forEach(m=>{
+    if(!map[m.a] || !map[m.b]) return;
+    const ra=map[m.a].elo, rb=map[m.b].elo;
+    const sa = m.scoreA>m.scoreB?1:0, sb=1-sa;
+    const ea=expectedScore(ra,rb), eb=1-ea;
+    map[m.a].prevElo = ra; map[m.b].prevElo = rb;
+    map[m.a].elo = Math.round(ra+K*(sa-ea));
+    map[m.b].elo = Math.round(rb+K*(sb-eb));
+    map[m.a].last = m.date; map[m.b].last = m.date;
+  });
+  return map;
+}
+
+function ageCategory(birthYear){
+  const age = new Date().getFullYear() - birthYear;
+  if(age<=11) return 'M11';
+  if(age<=13) return 'M13';
+  if(age<=15) return 'M15';
+  if(age<=17) return 'M17';
+  if(age<=20) return 'M20';
+  if(age<=39) return 'Senior';
+  return 'Veteran';
+}
+
+function periodCutoff(period){
+  const d = new Date();
+  if(period==='1w'){ d.setDate(d.getDate()-7); return d; }
+  if(period==='1m'){ d.setMonth(d.getMonth()-1); return d; }
+  if(period==='1y'){ d.setFullYear(d.getFullYear()-1); return d; }
+  if(period==='season'){
+    // saison escrime = sept -> aout
+    const now = new Date();
+    const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear()-1;
+    return new Date(year,8,1);
+  }
+  return null;
+}
+
+/* ---------- Rendering ---------- */
+function renderAll(){
+  renderAdminZone();
+  renderWeaponCounts();
+  renderClassement();
+  renderMatchs();
+  renderTireurs();
+  renderStats();
+  renderAdminForms();
+}
+
+function renderAdminZone(){
+  const z = document.getElementById('adminZone');
+  if(isAdmin){
+    z.innerHTML = `<span class="badge-admin">● Admin connecté</span>
+      <button class="pill-btn" onclick="doLogout()">Déconnexion</button>`;
+  }else{
+    z.innerHTML = `<button class="pill-btn" onclick="openModal('loginModal')">Connexion admin</button>`;
+  }
+}
+
+function renderWeaponCounts(){
+  document.getElementById('countSabre').textContent = DATA.fencers.filter(f=>f.weapon==='sabre').length + ' tireurs';
+  document.getElementById('countFleuret').textContent = DATA.fencers.filter(f=>f.weapon==='fleuret').length + ' tireurs';
+  document.querySelectorAll('.weapon-card').forEach(c=>{
+    c.classList.toggle('active', c.dataset.weapon===currentWeapon);
+  });
+}
+
+function setWeapon(w){ currentWeapon=w; renderWeaponCounts(); renderClassement(); }
+
+function renderClassement(){
+  const period = document.getElementById('periodSelect').value;
+  const sex = document.getElementById('sexSelect').value;
+  const cat = document.getElementById('catSelect').value;
+  const cutoff = periodCutoff(period);
+  const eloMap = eloForPeriod(currentWeapon, cutoff);
+
+  let rows = DATA.fencers.filter(f=>f.weapon===currentWeapon).map(f=>{
+    const e = eloMap[f.id] || {elo:START_ELO, prevElo:START_ELO};
+    return {...f, computedElo: e.elo, prevElo: e.prevElo, category: ageCategory(f.birthYear)};
+  });
+
+  if(sex!=='all') rows = rows.filter(r=>r.sex===sex);
+  if(cat!=='all') rows = rows.filter(r=>r.category===cat);
+
+  rows.sort((a,b)=> b.computedElo - a.computedElo);
+
+  const tbody = document.getElementById('classementBody');
+  if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucun tireur pour ces filtres.</td></tr>`; return; }
+
+  tbody.innerHTML = rows.map((r,i)=>{
+    const delta = r.computedElo - r.prevElo;
+    const deltaClass = delta>0?'up':delta<0?'down':'flat';
+    const deltaSym = delta>0?'▲':delta<0?'▼':'—';
+    return `<tr onclick="openProfile('${r.id}')" style="cursor:pointer;">
+      <td class="rank-cell ${i===0?'rank-1':''}">${i+1}</td>
+      <td>${r.name}</td>
+      <td><span class="tag">${r.category}</span></td>
+      <td>${r.sex}</td>
+      <td class="elo-cell">${r.computedElo}</td>
+      <td><span class="delta ${deltaClass}">${deltaSym} ${Math.abs(delta)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function populateMatchFencerFilter(){
+  const sel = document.getElementById('matchFencerFilter');
+  const current = sel.value;
+  sel.innerHTML = `<option value="all">Tous les tireurs</option>` +
+    DATA.fencers.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+  if([...sel.options].some(o=>o.value===current)) sel.value = current;
+}
+
+function renderMatchs(){
+  populateMatchFencerFilter();
+  const wf = document.getElementById('matchWeaponFilter').value;
+  const fencerId = document.getElementById('matchFencerFilter').value;
+  const oppSex = document.getElementById('matchOppSexFilter').value;
+  const oppCat = document.getElementById('matchOppCatFilter').value;
+
+  let matches = [...DATA.matches].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  if(wf!=='all') matches = matches.filter(m=>m.weapon===wf);
+  if(fencerId!=='all') matches = matches.filter(m=> m.a===fencerId || m.b===fencerId);
+
+  matches = matches.filter(m=>{
+    const fa = DATA.fencers.find(f=>f.id===m.a), fb = DATA.fencers.find(f=>f.id===m.b);
+    if(!fa||!fb) return false;
+    if(oppSex==='all' && oppCat==='all') return true;
+    // determine which fencer is "the opponent" relative to the selected tireur (if any)
+    let opponent;
+    if(fencerId!=='all'){
+      opponent = m.a===fencerId ? fb : fa;
+    } else {
+      // no specific tireur selected: match counts if EITHER side matches the opponent filters
+      const candidates = [fa, fb];
+      return candidates.some(c=>
+        (oppSex==='all' || c.sex===oppSex) && (oppCat==='all' || ageCategory(c.birthYear)===oppCat)
+      );
+    }
+    return (oppSex==='all' || opponent.sex===oppSex) && (oppCat==='all' || ageCategory(opponent.birthYear)===oppCat);
+  });
+
+  const tbody = document.getElementById('matchsBody');
+  if(matches.length===0){ tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucun match trouvé.</td></tr>`; return; }
+
+  tbody.innerHTML = matches.map(m=>{
+    const fa = DATA.fencers.find(f=>f.id===m.a), fb = DATA.fencers.find(f=>f.id===m.b);
+    if(!fa||!fb) return '';
+    const winner = m.scoreA>m.scoreB ? fa.name : fb.name;
+    return `<tr>
+      <td class="mono">${m.date}</td>
+      <td><span class="tag" style="border-color:${m.weapon==='sabre'?'var(--sabre)':'var(--fleuret)'}">${m.weapon}</span></td>
+      <td>${fa.name}</td>
+      <td class="mono">${m.scoreA} — ${m.scoreB}</td>
+      <td>${fb.name}</td>
+      <td style="color:var(--muted);font-size:12px;">🏆 ${winner}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTireurs(){
+  const wf = document.getElementById('fencerWeaponFilter').value;
+  let list = [...DATA.fencers];
+  if(wf!=='all') list = list.filter(f=>f.weapon===wf);
+  list.sort((a,b)=> b.elo-a.elo);
+
+  const grid = document.getElementById('tireursGrid');
+  if(list.length===0){ grid.innerHTML = `<div class="empty">Aucun tireur enregistré.</div>`; return; }
+
+  grid.innerHTML = list.map(f=>{
+    const accent = f.weapon==='sabre'?'var(--sabre)':'var(--fleuret)';
+    return `<div class="card" style="border-left:3px solid ${accent};position:relative;">
+      <div onclick="openProfile('${f.id}')">
+        <div class="name">${f.name}</div>
+        <div class="meta">${ageCategory(f.birthYear)} · ${f.sex==='F'?'Femme':'Homme'} · ${f.weapon}</div>
+        <div class="elo-big" style="color:${accent};">${f.elo}</div>
+      </div>
+      ${isAdmin ? `<div style="display:flex;gap:6px;margin-top:12px;">
+        <button class="btn secondary" style="flex:1;padding:6px 10px;font-size:11px;" onclick="event.stopPropagation();openEditFencer('${f.id}')">Modifier</button>
+        <button class="btn secondary" style="flex:1;padding:6px 10px;font-size:11px;color:var(--loss);" onclick="event.stopPropagation();deleteFencer('${f.id}')">Supprimer</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderStats(){
+  const totalMatches = DATA.matches.length;
+  const totalTouches = DATA.matches.reduce((s,m)=> s + (m.scoreA||0) + (m.scoreB||0), 0);
+  const matchesSabre = DATA.matches.filter(m=>m.weapon==='sabre').length;
+  const matchesFleuret = DATA.matches.filter(m=>m.weapon==='fleuret').length;
+
+  document.getElementById('generalStats').innerHTML = `
+    <div class="stat-box"><div class="n">${DATA.fencers.length}</div><div class="l">Tireurs inscrits</div></div>
+    <div class="stat-box"><div class="n">${totalMatches}</div><div class="l">Matchs enregistrés</div></div>
+    <div class="stat-box"><div class="n">${totalTouches}</div><div class="l">Touches totales</div></div>
+    <div class="stat-box"><div class="n">${matchesSabre} / ${matchesFleuret}</div><div class="l">Matchs sabre / fleuret</div></div>
+  `;
+
+  const koth = [];
+  ['sabre','fleuret'].forEach(weapon=>{
+    ['F','M'].forEach(sex=>{
+      const group = DATA.fencers.filter(f=>f.weapon===weapon && f.sex===sex);
+      if(group.length===0) return;
+      const leader = [...group].sort((a,b)=>b.elo-a.elo)[0];
+      const since = firstDateAtNumberOne(leader);
+      koth.push({weapon,sex,leader,since});
+    });
+  });
+
+  document.getElementById('kothGrid').innerHTML = koth.map(k=>{
+    const accent = k.weapon==='sabre'?'var(--sabre)':'var(--fleuret)';
+    return `<div class="koth-card" style="border-color:${accent}44;">
+      <div class="crown">👑</div>
+      <h3>${k.weapon} · ${k.sex==='F'?'Féminin':'Masculin'}</h3>
+      <div class="kname">${k.leader.name}</div>
+      <div class="kelo" style="color:${accent};">${k.leader.elo} pts</div>
+      <div class="ksince">1er(ère) depuis ${k.since}</div>
+    </div>`;
+  }).join('') || `<div class="empty">Pas encore de classement.</div>`;
+
+  renderFencerPicker();
+}
+
+function firstDateAtNumberOne(leader){
+  // walk backwards through match history of the weapon/group to find since when leader has been #1 continuously
+  const weapon = leader.weapon;
+  const group = DATA.fencers.filter(f=>f.weapon===weapon && f.sex===leader.sex);
+  const sorted = [...DATA.matches].filter(m=>m.weapon===weapon).sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const elos = {}; group.forEach(f=> elos[f.id]=f.elo);
+  let since = "toujours";
+  // replay backwards undoing matches, checking when leader stops being #1
+  for(const m of sorted){
+    const top = Object.entries(elos).sort((a,b)=>b[1]-a[1])[0];
+    if(!top || top[0] !== leader.id){ since = m.date; break; }
+    // undo this match roughly (can't perfectly invert, so approximate using history)
+    since = m.date;
+  }
+  return since === 'toujours' ? 'le début' : since;
+}
+
+/* ---------- Elo evolution chart ---------- */
+let chartSelectedIds = new Set();
+const CHART_PALETTE = ['#c99a3f','#4fb3ab','#c65b52','#7aa2d8','#b06fc9','#8fc95a','#e0a8d0','#5cb86b'];
+
+function renderFencerPicker(){
+  const weapon = document.getElementById('chartWeaponFilter').value;
+  const pool = DATA.fencers.filter(f=>f.weapon===weapon);
+  // drop selections that no longer belong to this weapon
+  chartSelectedIds = new Set([...chartSelectedIds].filter(id=> pool.some(f=>f.id===id)));
+  // default: preselect top 3 by elo if nothing selected yet
+  if(chartSelectedIds.size===0){
+    [...pool].sort((a,b)=>b.elo-a.elo).slice(0,3).forEach(f=>chartSelectedIds.add(f.id));
+  }
+  const picker = document.getElementById('chartFencerPicker');
+  if(pool.length===0){ picker.innerHTML = '<span class="empty" style="padding:6px;">Aucun tireur pour cette arme.</span>'; }
+  else{
+    picker.innerHTML = `<span class="filter-label">Tireurs</span>` + pool.map(f=>{
+      const active = chartSelectedIds.has(f.id);
+      return `<span class="chip ${active?'active':''}" onclick="toggleChartFencer('${f.id}')">${f.name}</span>`;
+    }).join('');
+  }
+  renderEloChart();
+}
+
+function toggleChartFencer(id){
+  if(chartSelectedIds.has(id)) chartSelectedIds.delete(id); else chartSelectedIds.add(id);
+  renderFencerPickerLabelsOnly();
+  renderEloChart();
+}
+
+function renderFencerPickerLabelsOnly(){
+  const weapon = document.getElementById('chartWeaponFilter').value;
+  const pool = DATA.fencers.filter(f=>f.weapon===weapon);
+  const picker = document.getElementById('chartFencerPicker');
+  picker.innerHTML = `<span class="filter-label">Tireurs</span>` + pool.map(f=>{
+    const active = chartSelectedIds.has(f.id);
+    return `<span class="chip ${active?'active':''}" onclick="toggleChartFencer('${f.id}')">${f.name}</span>`;
+  }).join('');
+}
+
+function renderEloChart(){
+  const wrap = document.getElementById('eloChartWrap');
+  const selected = DATA.fencers.filter(f=> chartSelectedIds.has(f.id));
+  if(selected.length===0){ wrap.innerHTML = '<div class="empty">Sélectionne au moins un tireur pour afficher son évolution.</div>'; return; }
+
+  // build per-fencer point series from history (skip seed entry), sorted by date
+  const series = selected.map((f,i)=>{
+    const pts = (f.history||[]).filter(h=>h.date!=='0000-00-00').sort((a,b)=>new Date(a.date)-new Date(b.date));
+    return { fencer:f, color: CHART_PALETTE[i%CHART_PALETTE.length], points: [{date:null, elo:START_ELO}, ...pts] };
+  });
+
+  const allDates = series.flatMap(s=>s.points.filter(p=>p.date).map(p=>new Date(p.date).getTime()));
+  if(allDates.length===0){
+    wrap.innerHTML = '<div class="empty">Pas encore de matchs enregistrés pour ces tireurs.</div>';
+    return;
+  }
+  const minT = Math.min(...allDates), maxT = Math.max(...allDates);
+  const allElos = series.flatMap(s=>s.points.map(p=>p.elo));
+  let minElo = Math.min(...allElos, START_ELO) - 20;
+  let maxElo = Math.max(...allElos, START_ELO) + 20;
+
+  const W = Math.max(700, 120*series[0].points.length), H = 340;
+  const padL=50, padR=20, padT=20, padB=36;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+
+  const xFor = (p, idx, total) => {
+    if(p.date===null) return padL; // seed point at left edge
+    if(maxT===minT) return padL + plotW/2;
+    return padL + ((new Date(p.date).getTime()-minT)/(maxT-minT))*plotW;
+  };
+  const yFor = (elo) => padT + plotH - ((elo-minElo)/(maxElo-minElo))*plotH;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;">`;
+  // grid lines + y labels
+  const steps=5;
+  for(let i=0;i<=steps;i++){
+    const val = minElo + (maxElo-minElo)*i/steps;
+    const y = yFor(val);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#2b333f" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="#8b93a1" font-family="JetBrains Mono, monospace">${Math.round(val)}</text>`;
+  }
+  // lines per fencer
+  series.forEach(s=>{
+    const pts = s.points.map((p,idx)=> [xFor(p,idx,s.points.length), yFor(p.elo)]);
+    const path = pts.map((pt,i)=> (i===0?'M':'L')+pt[0].toFixed(1)+','+pt[1].toFixed(1)).join(' ');
+    svg += `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach((pt,i)=>{
+      svg += `<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="3.5" fill="${s.color}"><title>${s.fencer.name} — ${s.points[i].elo}${s.points[i].date? ' — '+s.points[i].date:''}</title></circle>`;
+    });
+  });
+  svg += `</svg>`;
+
+  const legend = series.map(s=> `<span style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;font-size:12.5px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;"></span>${s.fencer.name}
+      <span class="mono" style="color:var(--muted);">(${s.points[s.points.length-1].elo})</span>
+    </span>`).join('');
+
+  wrap.innerHTML = `<div style="margin-bottom:12px;">${legend}</div>` + svg;
+}
+
+/* ---------- Admin forms ---------- */
+function renderAdminForms(){
+  const matchDiv = document.getElementById('adminMatchForm');
+  const fencerDiv = document.getElementById('adminFencerForm');
+  if(!isAdmin){ matchDiv.innerHTML=''; fencerDiv.innerHTML=''; return; }
+
+  const fencerOptions = DATA.fencers.map(f=>`<option value="${f.id}">${f.name} (${f.weapon})</option>`).join('');
+
+  matchDiv.innerHTML = `
+    <div class="form-panel">
+      <h2 class="h-title">Enregistrer un match</h2>
+      <div class="form-row">
+        <label>Arme
+          <select id="newMatchWeapon">
+            <option value="sabre">Sabre</option>
+            <option value="fleuret">Fleuret</option>
+          </select>
+        </label>
+        <label>Date
+          <input type="date" id="newMatchDate" value="${new Date().toISOString().slice(0,10)}">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Tireur A
+          <select id="newMatchA">${fencerOptions}</select>
+        </label>
+        <label>Score A
+          <input type="number" id="newMatchScoreA" value="15" min="0">
+        </label>
+        <label>Score B
+          <input type="number" id="newMatchScoreB" value="10" min="0">
+        </label>
+        <label>Tireur B
+          <select id="newMatchB">${fencerOptions}</select>
+        </label>
+      </div>
+      <button class="btn" onclick="addMatch()">Ajouter le match</button>
+    </div>`;
+
+  fencerDiv.innerHTML = `
+    <div class="form-panel">
+      <h2 class="h-title">Créer un profil tireur</h2>
+      <div class="form-row">
+        <label>Nom complet
+          <input type="text" id="newFencerName" placeholder="Prénom Nom">
+        </label>
+        <label>Sexe
+          <select id="newFencerSex"><option value="F">Femme</option><option value="M">Homme</option></select>
+        </label>
+        <label>Année de naissance
+          <input type="number" id="newFencerYear" placeholder="2012" min="1930" max="${new Date().getFullYear()}">
+        </label>
+        <label>Arme
+          <select id="newFencerWeapon"><option value="sabre">Sabre</option><option value="fleuret">Fleuret</option></select>
+        </label>
+      </div>
+      <button class="btn" onclick="addFencer()">Créer le profil</button>
+    </div>`;
+}
+
+async function addMatch(){
+  const a = document.getElementById('newMatchA').value;
+  const b = document.getElementById('newMatchB').value;
+  if(a===b){ alert("Un tireur ne peut pas s'affronter lui-même."); return; }
+  const fa = DATA.fencers.find(f=>f.id===a), fb = DATA.fencers.find(f=>f.id===b);
+  const weapon = document.getElementById('newMatchWeapon').value;
+  if(fa.weapon!==weapon || fb.weapon!==weapon){
+    if(!confirm("Attention : l'un des tireurs ne pratique pas cette arme. Continuer ?")) return;
+  }
+  const match = {
+    id: 'm'+Date.now(),
+    date: document.getElementById('newMatchDate').value,
+    weapon,
+    a, b,
+    scoreA: parseInt(document.getElementById('newMatchScoreA').value)||0,
+    scoreB: parseInt(document.getElementById('newMatchScoreB').value)||0,
+  };
+  DATA.matches.push(match);
+  recomputeAllElo();
+  await saveData();
+  renderAll();
+}
+
+async function addFencer(){
+  const name = document.getElementById('newFencerName').value.trim();
+  if(!name){ alert('Merci de saisir un nom.'); return; }
+  const fencer = {
+    id: 'f'+Date.now(),
+    name,
+    sex: document.getElementById('newFencerSex').value,
+    birthYear: parseInt(document.getElementById('newFencerYear').value) || new Date().getFullYear()-15,
+    weapon: document.getElementById('newFencerWeapon').value,
+    elo: START_ELO,
+    history: [{date:'0000-00-00', elo:START_ELO}],
+  };
+  DATA.fencers.push(fencer);
+  await saveData();
+  document.getElementById('newFencerName').value='';
+  renderAll();
+}
+
+/* ---------- Edit & delete fencer ---------- */
+function openEditFencer(id){
+  const f = DATA.fencers.find(x=>x.id===id);
+  if(!f) return;
+  document.getElementById('editFencerId').value = f.id;
+  document.getElementById('editFencerName').value = f.name;
+  document.getElementById('editFencerSex').value = f.sex;
+  document.getElementById('editFencerYear').value = f.birthYear;
+  document.getElementById('editFencerWeapon').value = f.weapon;
+  openModal('editModal');
+}
+
+async function saveEditFencer(){
+  const id = document.getElementById('editFencerId').value;
+  const f = DATA.fencers.find(x=>x.id===id);
+  if(!f) return;
+  const name = document.getElementById('editFencerName').value.trim();
+  if(!name){ alert('Le nom ne peut pas être vide.'); return; }
+  f.name = name;
+  f.sex = document.getElementById('editFencerSex').value;
+  f.birthYear = parseInt(document.getElementById('editFencerYear').value) || f.birthYear;
+  f.weapon = document.getElementById('editFencerWeapon').value;
+  recomputeAllElo();
+  await saveData();
+  closeModal('editModal');
+  renderAll();
+}
+
+async function deleteFencer(id){
+  const f = DATA.fencers.find(x=>x.id===id);
+  if(!f) return;
+  const linkedMatches = DATA.matches.filter(m=> m.a===id || m.b===id).length;
+  const msg = linkedMatches>0
+    ? `${f.name} a ${linkedMatches} match(s) enregistré(s). Les supprimer aussi et supprimer le profil ?`
+    : `Supprimer le profil de ${f.name} ?`;
+  if(!confirm(msg)) return;
+  DATA.matches = DATA.matches.filter(m=> m.a!==id && m.b!==id);
+  DATA.fencers = DATA.fencers.filter(x=>x.id!==id);
+  recomputeAllElo();
+  await saveData();
+  renderAll();
+}
+
+/* ---------- Profile modal + H2H ---------- */
+function openProfile(id){
+  selectedFencerId = id;
+  h2hOpponentId = null;
+  renderProfile();
+  openModal('profileModal');
+}
+
+function renderProfile(){
+  const f = DATA.fencers.find(x=>x.id===selectedFencerId);
+  if(!f) return;
+  const accent = f.weapon==='sabre'?'var(--sabre)':'var(--fleuret)';
+  const myMatches = DATA.matches.filter(m=> m.a===f.id || m.b===f.id);
+  const wins = myMatches.filter(m=> (m.a===f.id && m.scoreA>m.scoreB) || (m.b===f.id && m.scoreB>m.scoreA)).length;
+  const losses = myMatches.length - wins;
+  const touchesGiven = myMatches.reduce((s,m)=> s + (m.a===f.id?m.scoreA:m.scoreB), 0);
+  const touchesTaken = myMatches.reduce((s,m)=> s + (m.a===f.id?m.scoreB:m.scoreA), 0);
+
+  const sameWeaponFencers = DATA.fencers.filter(x=>x.weapon===f.weapon && x.id!==f.id);
+  const opponentSelect = `<select id="h2hSelect" onchange="setH2H(this.value)">
+      <option value="">Choisir un adversaire…</option>
+      ${sameWeaponFencers.map(o=>`<option value="${o.id}">${o.name}</option>`).join('')}
+    </select>`;
+
+  let h2hHtml = '';
+  if(h2hOpponentId){
+    const opp = DATA.fencers.find(x=>x.id===h2hOpponentId);
+    const duels = DATA.matches.filter(m=> (m.a===f.id&&m.b===opp.id) || (m.a===opp.id&&m.b===f.id));
+    const winsF = duels.filter(m=> (m.a===f.id && m.scoreA>m.scoreB) || (m.b===f.id && m.scoreB>m.scoreA)).length;
+    const winsO = duels.length - winsF;
+    const pctF = duels.length? Math.round(winsF/duels.length*100) : 0;
+    const pctO = 100-pctF;
+    h2hHtml = `
+      <div class="h2h-panel">
+        <div class="h2h-header">
+          <span class="h2h-name">${f.name}</span><span class="h2h-vs">VS</span><span class="h2h-name">${opp.name}</span>
+        </div>
+        <div class="bar-row">
+          <span class="mono" style="width:40px;">${pctF}%</span>
+          <div class="bar-track"><div class="bar-fill-a" style="width:${duels.length?pctF:50}%"></div><div class="bar-fill-b" style="width:${duels.length?pctO:50}%"></div></div>
+          <span class="mono" style="width:40px;text-align:right;">${pctO}%</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:10px;">${duels.length} confrontation(s) · ${winsF} victoire(s) pour ${f.name}</div>
+        ${duels.length ? duels.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(m=>{
+          const scoreF = m.a===f.id?m.scoreA:m.scoreB;
+          const scoreO = m.a===f.id?m.scoreB:m.scoreA;
+          return `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line);">
+            <span class="mono">${m.date}</span><span>${scoreF} — ${scoreO}</span>
+          </div>`;
+        }).join('') : '<div class="empty">Aucune confrontation directe.</div>'}
+      </div>`;
+  }
+
+  document.getElementById('profileContent').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:11px;color:var(--muted);">${f.weapon} · ${ageCategory(f.birthYear)} · ${f.sex==='F'?'Femme':'Homme'}</div>
+        <h3 style="font-size:22px;margin-top:2px;">${f.name}</h3>
+      </div>
+    </div>
+    <div class="elo-line" style="color:${accent};">${f.elo} <span style="font-size:13px;color:var(--muted);font-family:'Inter',sans-serif;">points elo</span></div>
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px;">
+      <div class="stat-box"><div class="n">${myMatches.length}</div><div class="l">Matchs</div></div>
+      <div class="stat-box"><div class="n">${wins}V / ${losses}D</div><div class="l">Bilan</div></div>
+      <div class="stat-box"><div class="n">${touchesGiven}</div><div class="l">Touches données</div></div>
+      <div class="stat-box"><div class="n">${touchesTaken}</div><div class="l">Touches reçues</div></div>
+    </div>
+    <h2 class="h-title">Face à face (H2H)</h2>
+    ${opponentSelect}
+    ${h2hHtml}
+  `;
+}
+
+function setH2H(id){ h2hOpponentId = id || null; renderProfile(); }
+
+/* ---------- Auth & modals ---------- */
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+function doLogin(){
+  const val = document.getElementById('loginPass').value;
+  if(val === DATA.adminPassword){
+    isAdmin = true;
+    closeModal('loginModal');
+    document.getElementById('loginPass').value='';
+    renderAdminZone();
+    renderAdminForms();
+  }else{
+    alert('Mot de passe incorrect.');
+  }
+}
+function doLogout(){ isAdmin=false; renderAdminZone(); renderAdminForms(); }
+
+/* ---------- Tabs ---------- */
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab-btn');
+  if(!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+btn.dataset.view).classList.add('active');
+});
+
+/* ---------- Live sync ----------
+   En mode Supabase, la synchronisation est gérée par subscribeRealtime()
+   (abonnement postgres_changes). En mode local (fallback), pas de sync
+   entre appareils — chaque navigateur a ses propres données. */
+
+loadData();
+</script>
+</body>
+</html>
